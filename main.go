@@ -19,6 +19,8 @@ func main() {
 		database := cfg.Require("database")
 		nodeEnvironment := cfg.Require("node_environment")
 
+		ctx.Export("url", pulumi.Sprintf("http://localhost:%d", frontendPort))
+
 		stack := ctx.Stack()
 		getwd, _ := os.Getwd()
 

@@ -1,0 +1,7 @@
+config:
+  first_go_pulumi_app:backend_port: "3000"
+  first_go_pulumi_app:database: cart
+  first_go_pulumi_app:frontend_port: "3001"
+  first_go_pulumi_app:mongo_host: mongodb://mongo:27017
+  first_go_pulumi_app:mongo_port: "27017"
+  first_go_pulumi_app:node_environment: development
