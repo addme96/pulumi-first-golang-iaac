@@ -16,6 +16,8 @@ func main() {
 		backendPort := cfg.RequireInt("backend_port")
 		mongoPort := cfg.RequireInt("mongo_port")
 		mongoHost := cfg.Require("mongo_host")
+		mongoUsername := cfg.Require("mongo_username")
+		mongoPassword := cfg.RequireSecret("mongo_password")
 		database := cfg.Require("database")
 		nodeEnvironment := cfg.Require("node_environment")
 
@@ -62,16 +64,20 @@ func main() {
 		mongoContainer, err := docker.NewContainer(ctx, "mongo_container", &docker.ContainerArgs{
 			Image: mongoImage.Name,
 			Name:  pulumi.Sprintf("mongo-%s", stack),
+			Ports: docker.ContainerPortArray{docker.ContainerPortArgs{
+				External: pulumi.Int(mongoPort),
+				Internal: pulumi.Int(mongoPort),
+			}},
+			Envs: pulumi.StringArray{
+				pulumi.Sprintf("MONGO_INITDB_ROOT_USERNAME=%s", mongoUsername),
+				pulumi.Sprintf("MONGO_INITDB_ROOT_PASSWORD=%s", mongoPassword),
+			},
 			NetworksAdvanced: docker.ContainerNetworksAdvancedArray{
 				docker.ContainerNetworksAdvancedArgs{
 					Aliases: pulumi.StringArray{pulumi.String("mongo")},
 					Name:    network.Name,
 				},
 			},
-			Ports: docker.ContainerPortArray{docker.ContainerPortArgs{
-				External: pulumi.Int(mongoPort),
-				Internal: pulumi.Int(mongoPort),
-			}},
 		})
 		if err != nil {
 			return err
@@ -85,8 +91,8 @@ func main() {
 				External: pulumi.Int(backendPort),
 			}},
 			Envs: pulumi.StringArray{
-				pulumi.Sprintf("DATABASE_HOST=%s", mongoHost),
-				pulumi.Sprintf("DATABASE_NAME=%s", database),
+				pulumi.Sprintf("DATABASE_HOST=mongodb://%s:%s@%s:%s", mongoUsername, mongoPassword, mongoHost, mongoPort),
+				pulumi.Sprintf("DATABASE_NAME=%s?authSource=admin", database),
 				pulumi.Sprintf("NODE_ENV=%s", nodeEnvironment),
 			},
 			NetworksAdvanced: docker.ContainerNetworksAdvancedArray{
@@ -117,7 +123,7 @@ func main() {
 			Command: pulumi.StringArray{
 				pulumi.String("sh"),
 				pulumi.String("-c"),
-				pulumi.String("mongoimport --host mongo --db cart --collection products --type json --file /home/products.json --jsonArray"),
+				pulumi.Sprintf("mongoimport --host mongo -u %s -p %s --authenticationDatabase admin --db cart --collection products --type json --file /home/products.json --jsonArray", mongoUsername, mongoPassword),
 			},
 		})
 		if err != nil {
